@@ -11,32 +11,36 @@ open Lean Parsec
 
 namespace CSV
 
+/--
+  Many arrays of `p` with the same size.
+-/
+partial def manyHomoCore (p : Parsec $ Array α) (acc : Array $ Array α) : Parsec $ Array $ Array α :=
+  (do 
+    let first ← p
+    if acc.size = 0 then
+      manyCore p (acc.push first)
+    else
+      if acc.back.size = first.size then 
+        manyCore p (acc.push first)
+      else 
+        fail "expect same size"
+  )
+  <|> pure acc
+
+/--
+  Many `p` separated by `s`.
+-/
+def manySep (p : Parsec α) (s : Parsec β) : Parsec $ Array α := do
+  manyCore (attempt (s *> p)) #[←p]
+
+/--
+  Many arrays of `p` with the same size separated by `s`.
+-/
+def manySepHomo (p : Parsec $ Array α) (s : Parsec β) : Parsec $  Array $ Array α := do
+  manyHomoCore (attempt (s *> p)) #[←p]
+
 /-
-  file = [header CRLF] record *(CRLF record) [CRLF]
-
-  header = name *(COMMA name)
-
-  record = field *(COMMA field)
-
-  name = field
-
-  field = (escaped / non-escaped)
-
-  escaped = DQUOTE *(TEXTDATA / COMMA / CR / LF / 2DQUOTE) DQUOTE
-
-  non-escaped = *TEXTDATA
-
-  COMMA = %x2C
-
-  CR = %x0D ;as per section 6.1 of RFC 2234 [2]
-
-  DQUOTE =  %x22 ;as per section 6.1 of RFC 2234 [2]
-
-  LF = %x0A ;as per section 6.1 of RFC 2234 [2]
-
-  CRLF = CR LF ;as per section 6.1 of RFC 2234 [2]
-
-  TEXTDATA =  %x20-21 / %x23-2B / %x2D-7E
+  The following definitions are adapted from https://datatracker.ietf.org/doc/html/rfc4180
 -/
 
 def TEXTDATA : Parsec Char := satisfy fun c =>
@@ -47,10 +51,9 @@ def TEXTDATA : Parsec Char := satisfy fun c =>
 def CR : Parsec Char := pchar '\r'
 def LF : Parsec Char := pchar '\n'
 def CRLF : Parsec String := pstring "\r\n"
-
 def COMMA : Parsec Char := pchar ','
 def DQUOTE : Parsec Char := pchar '\"'
-def «2DQUOTE» : Parsec Char := DQUOTE *> DQUOTE
+def «2DQUOTE»  : Parsec Char := pstring "\"\"" *> pure '\"'
 
 def escaped : Parsec String := 
   DQUOTE *>
@@ -59,21 +62,15 @@ def escaped : Parsec String :=
 
 def «non-escaped» : Parsec String := manyChars TEXTDATA
 
-def field : Parsec String := escaped <|> «non-escaped»
+def field : Parsec Field := escaped <|> «non-escaped»
 
-def record : Parsec $ Array String := do 
-  let first ← field
-  manyCore (COMMA *> field) #[first]
+def record : Parsec Record := manySep field COMMA
 
-def file : Parsec $ Array $ Array String := do
-  let first ← record
-  manyCore (CRLF *> record) #[first]
-  <* optional CRLF
-  <* eof
+def file : Parsec $ Array Record := manySepHomo record (CRLF <* notFollowedBy eof) <* (optional CRLF) <* eof
 
-def parse (s : String) : Except String (Array $ Array String) :=
+def parse (s : String) : Except String $ Array $ Array $ String :=
   match file s.mkIterator with
   | Parsec.ParseResult.success _ res => Except.ok res
-  | Parsec.ParseResult.error it err  => Except.error s!"offset {it.i.repr}: {err}" 
+  | Parsec.ParseResult.error it err  => Except.error s!"offset {it.i.repr}: {err}"
 
 end CSV

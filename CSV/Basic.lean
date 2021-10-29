@@ -6,6 +6,9 @@
 
 namespace CSV
 
--- TODO: something like Python's DictReader
+abbrev Field := String
+abbrev Record := Array Field
+
+-- TODO: something like `DictReader`
 
 end CSV
