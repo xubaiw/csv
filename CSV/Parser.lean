@@ -71,6 +71,6 @@ def file : Parsec $ Array Record := manySepHomo record (CRLF <* notFollowedBy eo
 def parse (s : String) : Except String $ Array $ Array $ String :=
   match file s.mkIterator with
   | Parsec.ParseResult.success _ res => Except.ok res
-  | Parsec.ParseResult.error it err  => Except.error s!"offset {it.i.repr}: {err}"
+  | Parsec.ParseResult.error it err  => Except.error s!"offset {it.i.byteIdx.repr}: {err}"
 
 end CSV

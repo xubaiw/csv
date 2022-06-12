@@ -9,7 +9,7 @@ import CSV.Basic
 
 namespace CSV
 
-def String.joinSep (a : Array String) (d : String) : String := do
+def String.joinSep (a : Array String) (d : String) : String := Id.run do
   if a.size = 0 then "" else
     let mut res := a.get! 0
     for s in a.toSubarray (start := 1) do
