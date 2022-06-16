@@ -1,7 +1,9 @@
 import Lake
 open Lake DSL
 
-package csv {
-  libRoots := #[`CSV]
-  defaultFacet := PackageFacet.staticLib
-}
+package csv
+
+lean_lib CSV
+
+@[defaultTarget]
+lean_exe Main
