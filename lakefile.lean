@@ -5,5 +5,5 @@ package csv
 
 lean_lib CSV
 
-@[defaultTarget]
+@[default_target]
 lean_exe Main
